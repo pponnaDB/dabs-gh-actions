@@ -1,0 +1,55 @@
+# This is a Databricks asset bundle definition for DABS_DEMO.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: DABS_DEMO
+
+variables:
+  job_cluster_1:
+    description: The classic compute job cluster to use in dev (in prod we will use serverless).
+    type: complex
+    default: 
+      spark_version: 15.4.x-scala2.12
+      node_type_id: Standard_DS3_v2
+      autoscale:
+        min_workers: 1
+        max_workers: 4
+  warehouse_id:
+    lookup:
+      warehouse: "Serverless Starter Warehouse"
+  sp_name:
+    description: The service principal ID for owning and running production workloads.
+    default: 5a60d77b-6e58-410c-96c0-eba6e7468f42
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-4171658961085377.17.azuredatabricks.net/
+    resources:
+      jobs:
+        DABS_DEMO_job:
+          tasks:
+            - task_key: notebook_task
+              new_cluster: ${var.job_cluster_1}
+          
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-4171658961085377.17.azuredatabricks.net/
+      # We explicitly specify /Workspace/Users/shreel.shah@databricks.com to make sure we only have a single copy.
+      root_path: /Users/${var.sp_name}/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: shreel.shah@databricks.com
+        level: CAN_MANAGE
+    run_as:
+     service_principal_name: ${var.sp_name} 
+
